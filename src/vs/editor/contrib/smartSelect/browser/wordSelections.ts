@@ -12,12 +12,16 @@ import { SelectionRange, SelectionRangeProvider } from 'vs/editor/common/languag
 
 export class WordSelectionRangeProvider implements SelectionRangeProvider {
 
+	constructor(private readonly ignoreSubwords = false) { }
+
 	provideSelectionRanges(model: ITextModel, positions: Position[]): SelectionRange[][] {
 		const result: SelectionRange[][] = [];
 		for (const position of positions) {
 			const bucket: SelectionRange[] = [];
 			result.push(bucket);
-			this._addInWordRanges(bucket, model, position);
+			if (!this.ignoreSubwords) {
+				this._addInWordRanges(bucket, model, position);
+			}
 			this._addWordRanges(bucket, model, position);
 			this._addWhitespaceLine(bucket, model, position);
 			bucket.push({ range: model.getFullModelRange() });

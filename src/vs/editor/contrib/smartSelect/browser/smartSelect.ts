@@ -60,6 +60,7 @@ export class SmartSelectController implements IEditorContribution {
 	}
 
 	private _state?: SelectionRanges[];
+	private _ignoreSubwords = true;
 	private _selectionListener?: IDisposable;
 	private _ignoreSelection: boolean = false;
 
@@ -72,7 +73,7 @@ export class SmartSelectController implements IEditorContribution {
 		this._selectionListener?.dispose();
 	}
 
-	async run(forward: boolean): Promise<void> {
+	async run(forward: boolean, ignoreSubwords: boolean): Promise<void> {
 		if (!this._editor.hasModel()) {
 			return;
 		}
@@ -80,9 +81,9 @@ export class SmartSelectController implements IEditorContribution {
 		const selections = this._editor.getSelections();
 		const model = this._editor.getModel();
 
-		if (!this._state) {
-
-			await provideSelectionRanges(this._languageFeaturesService.selectionRangeProvider, model, selections.map(s => s.getPosition()), this._editor.getOption(EditorOption.smartSelect), CancellationToken.None).then(ranges => {
+		if (!this._state || this._ignoreSubwords !== ignoreSubwords) {
+			this._ignoreSubwords = ignoreSubwords;
+			await provideSelectionRanges(this._languageFeaturesService.selectionRangeProvider, model, selections.map(s => s.getPosition()), this._editor.getOption(EditorOption.smartSelect), ignoreSubwords, CancellationToken.None).then(ranges => {
 				if (!arrays.isNonEmptyArray(ranges) || ranges.length !== selections.length) {
 					// invalid result
 					return;
@@ -135,14 +136,30 @@ abstract class AbstractSmartSelect extends EditorAction {
 	private readonly _forward: boolean;
 
 	constructor(forward: boolean, opts: IActionOptions) {
-		super(opts);
+		super({
+			description: {
+				description: opts.label,
+				args: [{
+					name: 'args',
+					schema: {
+						'type': 'object',
+						'properties': {
+							'ignoreSubwords': {
+								'type': 'boolean'
+							},
+						},
+					},
+				}],
+			},
+			...opts
+		});
 		this._forward = forward;
 	}
 
-	async run(_accessor: ServicesAccessor, editor: ICodeEditor): Promise<void> {
+	async run(_accessor: ServicesAccessor, editor: ICodeEditor, args: any): Promise<void> {
 		const controller = SmartSelectController.get(editor);
 		if (controller) {
-			await controller.run(this._forward);
+			await controller.run(this._forward, !!args.ignoreSubwords);
 		}
 	}
 }
@@ -210,10 +227,10 @@ export interface SelectionRangesOptions {
 	selectLeadingAndTrailingWhitespace: boolean;
 }
 
-export async function provideSelectionRanges(registry: LanguageFeatureRegistry<languages.SelectionRangeProvider>, model: ITextModel, positions: Position[], options: SelectionRangesOptions, token: CancellationToken): Promise<Range[][]> {
+export async function provideSelectionRanges(registry: LanguageFeatureRegistry<languages.SelectionRangeProvider>, model: ITextModel, positions: Position[], options: SelectionRangesOptions, ignoreSubwords: boolean, token: CancellationToken): Promise<Range[][]> {
 
 	const providers = registry.all(model)
-		.concat(new WordSelectionRangeProvider()); // ALWAYS have word based selection range
+		.concat(new WordSelectionRangeProvider(ignoreSubwords)); // ALWAYS have word based selection range
 
 	if (providers.length === 1) {
 		// add word selection and bracket selection when no provider exists
@@ -313,7 +330,7 @@ CommandsRegistry.registerCommand('_executeSelectionRangeProvider', async functio
 	const reference = await accessor.get(ITextModelService).createModelReference(resource);
 
 	try {
-		return provideSelectionRanges(registry, reference.object.textEditorModel, positions, { selectLeadingAndTrailingWhitespace: true }, CancellationToken.None);
+		return provideSelectionRanges(registry, reference.object.textEditorModel, positions, { selectLeadingAndTrailingWhitespace: true }, false, CancellationToken.None);
 	} finally {
 		reference.dispose();
 	}
