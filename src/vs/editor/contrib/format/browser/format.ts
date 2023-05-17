@@ -33,6 +33,7 @@ import { IProgress } from 'vs/platform/progress/common/progress';
 import { ILanguageFeaturesService } from 'vs/editor/common/services/languageFeatures';
 import { LanguageFeatureRegistry } from 'vs/editor/common/languageFeatureRegistry';
 import { ILogService } from 'vs/platform/log/common/log';
+import { firstNonWhitespaceIndex } from 'vs/base/common/strings';
 
 export function alertFormattingEdits(edits: ISingleEditOperation[]): void {
 
@@ -134,7 +135,8 @@ export async function formatDocumentRangesWithSelectedProvider(
 	rangeOrRanges: Range | Range[],
 	mode: FormattingMode,
 	progress: IProgress<DocumentRangeFormattingEditProvider>,
-	token: CancellationToken
+	token: CancellationToken,
+	indentOnly = false,
 ): Promise<void> {
 
 	const instaService = accessor.get(IInstantiationService);
@@ -144,7 +146,7 @@ export async function formatDocumentRangesWithSelectedProvider(
 	const selected = await FormattingConflicts.select(provider, model, mode);
 	if (selected) {
 		progress.report(selected);
-		await instaService.invokeFunction(formatDocumentRangesWithProvider, selected, editorOrModel, rangeOrRanges, token);
+		await instaService.invokeFunction(formatDocumentRangesWithProvider, selected, editorOrModel, rangeOrRanges, token, indentOnly);
 	}
 }
 
@@ -153,7 +155,8 @@ export async function formatDocumentRangesWithProvider(
 	provider: DocumentRangeFormattingEditProvider,
 	editorOrModel: ITextModel | IActiveCodeEditor,
 	rangeOrRanges: Range | Range[],
-	token: CancellationToken
+	token: CancellationToken,
+	indentOnly = false
 ): Promise<boolean> {
 	const workerService = accessor.get(IEditorWorkerService);
 	const logService = accessor.get(ILogService);
@@ -259,10 +262,15 @@ export async function formatDocumentRangesWithProvider(
 			}
 		}
 
-		for (const rawEdits of rawEditsList) {
+		for (let rawEdits of rawEditsList) {
 			if (cts.token.isCancellationRequested) {
 				return true;
 			}
+
+			if (indentOnly) {
+				rawEdits = getIndentationEdits(rawEdits, model);
+			}
+
 			const minimalEdits = await workerService.computeMoreMinimalEdits(model.uri, rawEdits);
 			if (minimalEdits) {
 				allEdits.push(...minimalEdits);
@@ -441,7 +449,8 @@ export function getOnTypeFormattingEdits(
 	position: Position,
 	ch: string,
 	options: FormattingOptions,
-	token: CancellationToken
+	token: CancellationToken,
+	indentOnly = false
 ): Promise<TextEdit[] | null | undefined> {
 
 	const providers = languageFeaturesService.onTypeFormattingEditProvider.ordered(model);
@@ -455,8 +464,19 @@ export function getOnTypeFormattingEdits(
 	}
 
 	return Promise.resolve(providers[0].provideOnTypeFormattingEdits(model, position, ch, options, token)).catch(onUnexpectedExternalError).then(edits => {
+		if (indentOnly && edits) {
+			edits = getIndentationEdits(edits, model);
+		}
 		return workerService.computeMoreMinimalEdits(model.uri, edits);
 	});
+}
+
+function getIndentationEdits(edits: TextEdit[], model: ITextModel) {
+	return edits.filter((edit) =>
+		edit.range.startLineNumber === edit.range.endLineNumber &&
+		edit.range.endColumn <= model.getLineIndentColumn(edit.range.endLineNumber) &&
+		firstNonWhitespaceIndex(edit.text) === -1
+	);
 }
 
 CommandsRegistry.registerCommand('_executeFormatRangeProvider', async function (accessor, ...args) {
