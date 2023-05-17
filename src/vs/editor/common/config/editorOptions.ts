@@ -43,7 +43,8 @@ export const enum EditorAutoIndentStrategy {
 	Keep = 1,
 	Brackets = 2,
 	Advanced = 3,
-	Full = 4
+	Full = 4,
+	FullWithFormatter = 5
 }
 
 /**
@@ -1278,13 +1279,14 @@ class EditorEnumOption<K extends EditorOption, T extends string, V> extends Base
 
 //#region autoIndent
 
-function _autoIndentFromString(autoIndent: 'none' | 'keep' | 'brackets' | 'advanced' | 'full'): EditorAutoIndentStrategy {
+function _autoIndentFromString(autoIndent: 'none' | 'keep' | 'brackets' | 'advanced' | 'full' | 'fullWithFormatter'): EditorAutoIndentStrategy {
 	switch (autoIndent) {
 		case 'none': return EditorAutoIndentStrategy.None;
 		case 'keep': return EditorAutoIndentStrategy.Keep;
 		case 'brackets': return EditorAutoIndentStrategy.Brackets;
 		case 'advanced': return EditorAutoIndentStrategy.Advanced;
 		case 'full': return EditorAutoIndentStrategy.Full;
+		case 'fullWithFormatter': return EditorAutoIndentStrategy.FullWithFormatter;
 	}
 }
 
@@ -5248,8 +5250,8 @@ export const EditorOptions = {
 	)),
 	autoIndent: register(new EditorEnumOption(
 		EditorOption.autoIndent, 'autoIndent',
-		EditorAutoIndentStrategy.Full, 'full',
-		['none', 'keep', 'brackets', 'advanced', 'full'],
+		EditorAutoIndentStrategy.FullWithFormatter, 'fullWithFormatter',
+		['none', 'keep', 'brackets', 'advanced', 'full', 'fullWithFormatter'],
 		_autoIndentFromString,
 		{
 			enumDescriptions: [
@@ -5258,6 +5260,7 @@ export const EditorOptions = {
 				nls.localize('editor.autoIndent.brackets', "The editor will keep the current line's indentation and honor language defined brackets."),
 				nls.localize('editor.autoIndent.advanced', "The editor will keep the current line's indentation, honor language defined brackets and invoke special onEnterRules defined by languages."),
 				nls.localize('editor.autoIndent.full', "The editor will keep the current line's indentation, honor language defined brackets, invoke special onEnterRules defined by languages, and honor indentationRules defined by languages."),
+				nls.localize('editor.autoIndent.fullWithFormatter', "The editor will keep the current line's indentation, honor language defined brackets, invoke special onEnterRules defined by languages, honor indentationRules defined by languages, and use the formatter provided by languages (for indentation only)."),
 			],
 			description: nls.localize('autoIndent', "Controls whether the editor should automatically adjust the indentation when users type, paste, move or indent lines.")
 		}

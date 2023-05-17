@@ -169,7 +169,8 @@ export enum EditorAutoIndentStrategy {
 	Keep = 1,
 	Brackets = 2,
 	Advanced = 3,
-	Full = 4
+	Full = 4,
+	FullWithFormatter = 5
 }
 
 export enum EditorOption {

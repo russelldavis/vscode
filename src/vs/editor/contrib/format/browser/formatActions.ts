@@ -11,7 +11,7 @@ import { DisposableStore } from 'vs/base/common/lifecycle';
 import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { EditorAction, EditorContributionInstantiation, registerEditorAction, registerEditorContribution, ServicesAccessor } from 'vs/editor/browser/editorExtensions';
 import { ICodeEditorService } from 'vs/editor/browser/services/codeEditorService';
-import { EditorOption } from 'vs/editor/common/config/editorOptions';
+import { EditorAutoIndentStrategy, EditorOption } from 'vs/editor/common/config/editorOptions';
 import { CharacterSet } from 'vs/editor/common/core/characterClassifier';
 import { Range } from 'vs/editor/common/core/range';
 import { IEditorContribution } from 'vs/editor/common/editorCommon';
@@ -34,6 +34,7 @@ class FormatOnType implements IEditorContribution {
 
 	private readonly _disposables = new DisposableStore();
 	private readonly _sessionDisposables = new DisposableStore();
+	private _indentOnly = false;
 
 	constructor(
 		private readonly _editor: ICodeEditor,
@@ -44,7 +45,7 @@ class FormatOnType implements IEditorContribution {
 		this._disposables.add(_editor.onDidChangeModel(() => this._update()));
 		this._disposables.add(_editor.onDidChangeModelLanguage(() => this._update()));
 		this._disposables.add(_editor.onDidChangeConfiguration(e => {
-			if (e.hasChanged(EditorOption.formatOnType)) {
+			if (e.hasChanged(EditorOption.formatOnType) || e.hasChanged(EditorOption.autoIndent)) {
 				this._update();
 			}
 		}));
@@ -61,8 +62,12 @@ class FormatOnType implements IEditorContribution {
 		// clean up
 		this._sessionDisposables.clear();
 
-		// we are disabled
-		if (!this._editor.getOption(EditorOption.formatOnType)) {
+		if (this._editor.getOption(EditorOption.formatOnType)) {
+			this._indentOnly = false;
+		} else if (this._editor.getOption(EditorOption.autoIndent) === EditorAutoIndentStrategy.FullWithFormatter) {
+			this._indentOnly = true;
+		} else {
+			// we are disabled
 			return;
 		}
 
@@ -135,7 +140,8 @@ class FormatOnType implements IEditorContribution {
 			position,
 			ch,
 			model.getFormattingOptions(),
-			cts.token
+			cts.token,
+			this._indentOnly,
 		).then(edits => {
 			if (cts.token.isCancellationRequested) {
 				return;
@@ -156,6 +162,7 @@ class FormatOnPaste implements IEditorContribution {
 
 	private readonly _callOnDispose = new DisposableStore();
 	private readonly _callOnModel = new DisposableStore();
+	private _indentOnly = false;
 
 	constructor(
 		private readonly editor: ICodeEditor,
@@ -178,8 +185,12 @@ class FormatOnPaste implements IEditorContribution {
 		// clean up
 		this._callOnModel.clear();
 
-		// we are disabled
-		if (!this.editor.getOption(EditorOption.formatOnPaste)) {
+		if (this.editor.getOption(EditorOption.formatOnPaste)) {
+			this._indentOnly = false;
+		} else if (this.editor.getOption(EditorOption.autoIndent) === EditorAutoIndentStrategy.FullWithFormatter) {
+			this._indentOnly = true;
+		} else {
+			// we are disabled
 			return;
 		}
 
@@ -203,7 +214,7 @@ class FormatOnPaste implements IEditorContribution {
 		if (this.editor.getSelections().length > 1) {
 			return;
 		}
-		this._instantiationService.invokeFunction(formatDocumentRangesWithSelectedProvider, this.editor, range, FormattingMode.Silent, Progress.None, CancellationToken.None).catch(onUnexpectedError);
+		this._instantiationService.invokeFunction(formatDocumentRangesWithSelectedProvider, this.editor, range, FormattingMode.Silent, Progress.None, CancellationToken.None, this._indentOnly).catch(onUnexpectedError);
 	}
 }
 
