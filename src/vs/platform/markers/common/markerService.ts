@@ -139,6 +139,10 @@ class MarkerStats implements MarkerStatistics {
 	}
 }
 
+export function shouldIgnoreMarkerResource(resource: URI) {
+	return resource.scheme === 'file' && resource.path.includes('/node_modules/');
+}
+
 export class MarkerService implements IMarkerService {
 
 	declare readonly _serviceBrand: undefined;
@@ -169,6 +173,9 @@ export class MarkerService implements IMarkerService {
 	}
 
 	changeOne(owner: string, resource: URI, markerData: IMarkerData[]): void {
+		if (shouldIgnoreMarkerResource(resource)) {
+			return;
+		}
 
 		if (isFalsyOrEmpty(markerData)) {
 			// remove marker for this (owner,resource)-tuple
@@ -247,6 +254,10 @@ export class MarkerService implements IMarkerService {
 			// group by resource
 			const groups = new ResourceMap<IMarker[]>();
 			for (const { resource, marker: markerData } of data) {
+				if (shouldIgnoreMarkerResource(resource)) {
+					continue;
+				}
+
 				const marker = MarkerService._toMarker(owner, resource, markerData);
 				if (!marker) {
 					// filter bad markers
