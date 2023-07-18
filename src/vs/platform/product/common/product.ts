@@ -37,6 +37,14 @@ else if (globalThis._VSCODE_PRODUCT_JSON && globalThis._VSCODE_PACKAGE_JSON) {
 		});
 	}
 
+	Object.assign(product, {
+		extensionsGallery: {
+			serviceUrl: 'https://marketplace.visualstudio.com/_apis/public/gallery',
+			itemUrl: 'https://marketplace.visualstudio.com/items',
+			controlUrl: '',
+		}
+	});
+
 	// Version is added during built time, but we still
 	// want to have it running out of sources so we
 	// read it from package.json only when we need it.
