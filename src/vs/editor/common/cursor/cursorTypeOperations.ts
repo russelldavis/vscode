@@ -371,7 +371,15 @@ export class TypeOperations {
 						}
 						offset = Math.min(oldEndViewColumn + 1 - config.normalizeIndentation(ir.afterEnter).length - 1, 0);
 					}
-					return new ReplaceCommandWithOffsetCursorState(range, '\n' + config.normalizeIndentation(ir.afterEnter), 0, offset, true);
+					function ws(str: string) {
+						return `"${str}"`;
+					}
+					console.log('beforeEnter', ws(ir.beforeEnter));
+					console.log('afterEnter', ws(ir.afterEnter));
+					console.log('bbb', oldEndColumn, firstNonWhitespace, offset);
+					console.log('norm', ws(config.normalizeIndentation(ir.afterEnter)));
+					console.log('range', range.toJSON().toString());
+					return new ReplaceCommandWithOffsetCursorState(range, '\n' + config.normalizeIndentation(ir.afterEnter), 0, offset, false);
 				}
 			}
 		}

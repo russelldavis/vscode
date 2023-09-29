@@ -269,6 +269,7 @@ export async function formatDocumentRangesWithProvider(
 
 			if (indentOnly) {
 				rawEdits = getIndentationEdits(rawEdits, model);
+				console.log('indentOnly', rawEdits.map(e => `|${e.text}|`));
 			}
 
 			const minimalEdits = await workerService.computeMoreMinimalEdits(model.uri, rawEdits);

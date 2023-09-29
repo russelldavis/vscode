@@ -39,15 +39,14 @@ function getPrecedingValidLine(model: IVirtualModel, lineNumber: number, indentR
 	const languageId = model.tokenization.getLanguageIdAtPosition(lineNumber, 0);
 	if (lineNumber > 1) {
 		let lastLineNumber: number;
-		let resultLineNumber = -1;
 
 		for (lastLineNumber = lineNumber - 1; lastLineNumber >= 1; lastLineNumber--) {
-			if (model.tokenization.getLanguageIdAtPosition(lastLineNumber, 0) !== languageId) {
-				return resultLineNumber;
+			if (model.tokenization.getLanguageIdAtPosition(lastLineNumber, Infinity) !== languageId) {
+				console.log('mismatch', languageId, model.tokenization.getLanguageIdAtPosition(lastLineNumber, 0));
+				return -1;
 			}
 			const text = model.getLineContent(lastLineNumber);
 			if (indentRulesSupport.shouldIgnore(text) || /^\s+$/.test(text) || text === '') {
-				resultLineNumber = lastLineNumber;
 				continue;
 			}
 
@@ -93,6 +92,8 @@ export function getInheritIndentForLine(
 		};
 	}
 
+	console.log('zaa');
+
 	// Use no indent if this is the first non-blank line
 	for (let priorLineNumber = lineNumber - 1; priorLineNumber > 0; priorLineNumber--) {
 		if (model.getLineContent(priorLineNumber) !== '') {
@@ -105,6 +106,7 @@ export function getInheritIndentForLine(
 			};
 		}
 	}
+	console.log('zbb');
 
 	const precedingUnIgnoredLine = getPrecedingValidLine(model, lineNumber, indentRulesSupport);
 	if (precedingUnIgnoredLine < 0) {
@@ -115,21 +117,26 @@ export function getInheritIndentForLine(
 			action: null
 		};
 	}
+	console.log('zcc');
 
 	const precedingUnIgnoredLineContent = model.getLineContent(precedingUnIgnoredLine);
 	if (indentRulesSupport.shouldIncrease(precedingUnIgnoredLineContent) || indentRulesSupport.shouldIndentNextLine(precedingUnIgnoredLineContent)) {
+		console.log('zdd');
 		return {
 			indentation: strings.getLeadingWhitespace(precedingUnIgnoredLineContent),
 			action: IndentAction.Indent,
 			line: precedingUnIgnoredLine
 		};
 	} else if (indentRulesSupport.shouldDecrease(precedingUnIgnoredLineContent)) {
+		console.log('zee');
 		return {
 			indentation: strings.getLeadingWhitespace(precedingUnIgnoredLineContent),
 			action: null,
 			line: precedingUnIgnoredLine
 		};
 	} else {
+		console.log('zff');
+
 		// precedingUnIgnoredLine can not be ignored.
 		// it doesn't increase indent of following lines
 		// it doesn't increase just next line
@@ -142,6 +149,7 @@ export function getInheritIndentForLine(
 				line: precedingUnIgnoredLine
 			};
 		}
+		console.log('zgg');
 
 		const previousLine = precedingUnIgnoredLine - 1;
 
@@ -163,8 +171,10 @@ export function getInheritIndentForLine(
 				line: stopLine + 1
 			};
 		}
+		console.log('zhh');
 
 		if (honorIntentialIndent) {
+			console.log('zii', lineNumber, precedingUnIgnoredLine, ws(model.getLineContent(precedingUnIgnoredLine)));
 			return {
 				indentation: strings.getLeadingWhitespace(model.getLineContent(precedingUnIgnoredLine)),
 				action: null,
@@ -175,6 +185,7 @@ export function getInheritIndentForLine(
 			for (let i = precedingUnIgnoredLine; i > 0; i--) {
 				const lineContent = model.getLineContent(i);
 				if (indentRulesSupport.shouldIncrease(lineContent)) {
+					console.log('zjj');
 					return {
 						indentation: strings.getLeadingWhitespace(lineContent),
 						action: IndentAction.Indent,
@@ -190,12 +201,14 @@ export function getInheritIndentForLine(
 						break;
 					}
 
+					console.log('zkk');
 					return {
 						indentation: strings.getLeadingWhitespace(model.getLineContent(stopLine + 1)),
 						action: null,
 						line: stopLine + 1
 					};
 				} else if (indentRulesSupport.shouldDecrease(lineContent)) {
+					console.log('zll');
 					return {
 						indentation: strings.getLeadingWhitespace(lineContent),
 						action: null,
@@ -204,6 +217,7 @@ export function getInheritIndentForLine(
 				}
 			}
 
+			console.log('zmm');
 			return {
 				indentation: strings.getLeadingWhitespace(model.getLineContent(1)),
 				action: null,
@@ -298,6 +312,10 @@ export function getGoodIndentForLine(
 	return null;
 }
 
+function ws(str: string) {
+	return `"${str}"`;
+}
+
 export function getIndentForEnter(
 	autoIndent: EditorAutoIndentStrategy,
 	model: ITextModel,
@@ -330,6 +348,7 @@ export function getIndentForEnter(
 		const endScopedLineTokens = getScopedLineTokens(model, range.endLineNumber, range.endColumn);
 		afterEnterText = endScopedLineTokens.getLineContent().substr(range.endColumn - 1 - scopedLineTokens.firstCharOffset);
 	}
+	console.log(111, ws(afterEnterText));
 
 	const indentRulesSupport = languageConfigurationService.getLanguageConfiguration(scopedLineTokens.languageId).indentRulesSupport;
 	if (!indentRulesSupport) {
@@ -369,6 +388,7 @@ export function getIndentForEnter(
 			afterEnter: beforeEnter
 		};
 	}
+	console.log('action', afterEnterAction.action, ws(afterEnterAction.indentation));
 
 	let afterEnterIndent = embeddedLanguage ? currentLineIndent : afterEnterAction.indentation;
 
