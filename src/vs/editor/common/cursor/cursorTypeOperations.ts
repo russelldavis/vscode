@@ -159,6 +159,7 @@ export class TypeOperations {
 		if (expectedIndentAction) {
 			action = expectedIndentAction.action;
 			indentation = expectedIndentAction.indentation;
+			console.log('tab', action, `"${indentation}"`);
 		} else if (lineNumber > 1) {
 			let lastLineNumber: number;
 			for (lastLineNumber = lineNumber - 1; lastLineNumber >= 1; lastLineNumber--) {
